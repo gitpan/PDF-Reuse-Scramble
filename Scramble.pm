@@ -7,7 +7,7 @@ use integer;
 
 require PDF::Reuse;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 sub new
 {  my $class = shift;
@@ -536,9 +536,14 @@ with the name $fieldName.
 
 N.B. Your user needs Acrobat/Reader 5.0.5 or higher.
 
+=head2 getKeys
+
+    ($fullKey, $halfKey, $transaction) = $s->getKeys();
+
+Returns the keys used in the scrambling 
 
 =head2 initJsCode
-      
+
     $s->initJsCode();
 
 Inserts a string with JavaScript code in the PDF-document you are creating.

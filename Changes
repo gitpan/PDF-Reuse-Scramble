@@ -1,5 +1,8 @@
 Revision history for Perl extension PDF::Reuse::Scramble.
 
+0.04  Sun Dec 28 2003
+      Forgot to write about the method getKeys. Added.
+
 0.03  Sun Dec 28 2003
       Added a new method exportJsCode
       Added a new example, changed the documentation and some code
