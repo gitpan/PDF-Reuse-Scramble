@@ -1,0 +1,6 @@
+Revision history for Perl extension PDF::Reuse::Scramble.
+
+0.01  Sun Dec 21 12:34:50 2003
+	- original version; created by h2xs 1.22 with options
+		-AXb 5.6.0 -n PDF::Reuse::Scramble
+
