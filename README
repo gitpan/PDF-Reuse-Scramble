@@ -1,4 +1,4 @@
-PDF/Reuse/Scramble version 0.02
+PDF/Reuse/Scramble version 0.03
 ===============================
 
 This module has subroutines in Perl and corresponding functions in Acrobat
@@ -6,7 +6,7 @@ JavaScript to encrypt and decrypt data transferred between Perl and a PDF-
 document and back to Perl. There is also a subroutine/function in both languages
 to create the keys used for the scrambling.
 
-For usage look at EXAMPLE under the POD for this module.
+For usage look at EXAMPLES under the POD for this module.
 
 INSTALLATION
 To install this module in a Windows environment:

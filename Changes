@@ -1,5 +1,9 @@
 Revision history for Perl extension PDF::Reuse::Scramble.
 
+0.03  Sun Dec 28 2003
+      Added a new method exportJsCode
+      Added a new example, changed the documentation and some code
+
 0.02  Fri Dec 26 2003
       More or less rewritten, now as an OO module.
 
