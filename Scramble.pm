@@ -7,7 +7,7 @@ use integer;
 
 require PDF::Reuse;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 sub new
 {  my $class = shift;
@@ -389,8 +389,10 @@ PDF::Reuse::Scramble - Scramble data transfer between Perl - Acrobat JavaScript
 
 =head1 SYNOPSIS
 
-A little test where everything is done in Perl. In a real case, JavaScript
-would be involved.
+A little test where everything is done in Perl, 'test.pl'. In a real case, 
+JavaScript would be involved.
+
+=for test.pl begin
 
    use PDF::Reuse::Scramble;
    use strict;
@@ -421,15 +423,12 @@ would be involved.
    my $text = $d->decrypt($codedString);
    print "$text\n";
 
-
-=head1 ABSTRACT
-
-This module has subroutines in Perl and functions in Acrobat JavaScript to encrypt
-and decrypt data transferred between Perl and a PDF-document and back to Perl. There
-is also a subroutine/function in both languages to create the keys used for 
-the scrambling.
+=for end
 
 =head1 DESCRIPTION
+
+This module should be considered as experimental, because of the "feature" of 
+Acrobat described further down under "Remarks about Acrobat and JavaScript".
 
 A:
 
@@ -449,6 +448,10 @@ If your users have Acrobat Reader 5.0.5 or higher it also makes it possible to u
 the Reader and Acrobat in a restricted way so you can decide who can read the 
 data of the form. Also answers can be sent by mail.
 
+(The Reader needs to have the option "Allow File Open Actions and Launching File
+ Attachments" checked under "Preferences".)
+
+
 The process then looks a little like this:
 
 Data to be inserted in a PDF-document is encrypted with a B<short key> and
@@ -464,6 +467,15 @@ detected.)
 
 When data is sent back to the server, a B<long key> together with a transaction
 code will be used both to encrypt and decrypt it.
+
+=head2 Remarks about Acrobat and JavaScript
+
+If your user has Acrobat Reader, he/she should be able to use the documents
+produced by this module. If he/she uses Acrobat there is a complication. 
+Everything should work fine as long as new files are not read via the web, because
+Acrobat has a plug in, "webpdf.api", which converts documents, also PDF-documents !!!,
+when they are fetched. B<Most often JavaScripts are lost in this conversion.>
+Documents sent by e.g. mail or ftp are not affected.
 
 =head1 Encryption methods
 
@@ -582,6 +594,8 @@ a button which calls sendUpdates(); when you click on it.
 
 This JavaScript is defined at document level:
 
+=for snippet.js begin
+
  function sendUpdates()
    {  //
       // To be sure that the keys are defined
@@ -617,7 +631,11 @@ This JavaScript is defined at document level:
       this.getURL(dest, false);
    }
 
-Here is the program that generates the PDF-document
+=for end
+
+Here is the program, 'verified.pl' that generates the PDF-document
+
+=for verified.pl begin
 
    use PDF::Reuse;
    use PDF::Reuse::Scramble;
@@ -654,6 +672,8 @@ Here is the program that generates the PDF-document
  
    prDoc('old.pdf');
    prEnd();
+
+=for end
 
 When the user presses the button, he has to identify himself with a userid and
 password, and the data, partly encrypted and hex encoded is sent.
@@ -710,6 +730,8 @@ You have a PDF-document with the interactive fields: field_1, field_2 and field_
 If your user writes the control code "AX225", he/she will be able to read the 
 encrypted texts.
 
+=for short.pl begin
+
      use PDF::Reuse;
      use PDF::Reuse::Scramble;
      use strict;
@@ -726,6 +748,8 @@ encrypted texts.
      prDoc('old.pdf');
      prEnd();
 
+=for end
+
 =head2 A long example (more or less complete)
 
 This example looks a little bit big, because it shows how different programs
@@ -736,6 +760,8 @@ run the programs at the directory where your server looks for CGI-programs.
 
 First we need a JavaScript file which defines interactive fields and buttons
 and assigns values to them ('fab.js'):
+
+=for fab.js begin
 
   function fab()   
    {  var param = fab.arguments;       // Here are the parameters
@@ -877,7 +903,11 @@ and assigns values to them ('fab.js'):
                     cSubject: "This is the subject", cMsg: str} );
    }
 
+=for end
+
 Here is a Perl program which creates a PDF-document and uses 'fab.js'
+
+=for long.pl begin
 
      use PDF::Reuse;
      use PDF::Reuse::Scramble;
@@ -963,8 +993,12 @@ Here is a Perl program which creates a PDF-document and uses 'fab.js'
 
      prEnd();
 
+=for end
+
 And here at last is a little cgi-program 'update.pl' which receives encrypted
 data from the PDF-document, decrypts it, and sends the result back.
+
+=for update.pl begin
 
    use PDF::Reuse;
    use PDF::Reuse::Scramble;
@@ -1063,11 +1097,18 @@ data from the PDF-document, decrypts it, and sends the result back.
    }
    prEnd();
 
+=for end
+
 =head1 SEE ALSO
 
 PDF::Reuse
 
 PDF::Reuse::Tutorial
+
+=head2 Extracting the programs of this document
+
+At the beginning of the POD of PDF::Reuse::Tutorial, from version 0.09, there is a
+snippet of code, which can be used to extract the programs from this POD.
 
 =head1 AUTHOR
 
@@ -1075,7 +1116,7 @@ Lars Lundberg, Solidez HB, elkelund@worldonline.se
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2003 by Lars Lundberg
+Copyright 2003 - 2004 by Lars Lundberg
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

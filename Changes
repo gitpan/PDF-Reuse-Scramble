@@ -1,5 +1,8 @@
 Revision history for Perl extension PDF::Reuse::Scramble.
 
+0.05  Tue Feb 3 2004
+      Added warnings about JavaScript and webpdf.api
+
 0.04  Sun Dec 28 2003
       Forgot to write about the method getKeys. Added.
 
