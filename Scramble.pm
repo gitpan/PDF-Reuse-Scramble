@@ -5,33 +5,57 @@ use strict;
 use warnings;
 use integer;
 
-require Exporter;
+require PDF::Reuse;
 
-our @ISA = qw(Exporter);
-our %EXPORT_TAGS = ( 'all' => [ qw(authorize encrypt decrypt) ] );
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
-sub authorize
-{  my $User = shift || ' ';
-   my $Pass = shift || ' ';
-   my $seed = shift || time;
+sub new
+{  my $class = shift;
+   my $self  = {};
+   bless $self, $class;
+   my %param = @_;
+   for (keys %param)
+   {   my $key = lc($_);
+       $self->{$key} = $param{$_}; 
+   }
+   my $user    = $self->{'user'}     || ' ';
+   my $pass    = $self->{'password'} || ' ';
+   my $seed    = $self->{'seed'}     || time;
+   my $nouser  = $self->{'nouser'};
+   my $nopass  = $self->{'nopassword'};
+   my $title   = $self->{'title'} || 'Password';
+   my $trans   = $self->{'transaction'};
+  
    srand($seed);
-   my $random = uc(sprintf("%x",rand(999999)));
-   $random   .= sprintf("%x",rand(999999));
-   $random   .= uc(sprintf("%x",rand(999999)));
-   $random   .= sprintf("%x",rand(999999));
-   $random   .= uc(sprintf("%x",rand(999999)));
-   while ((length($User) < 4) || (length($Pass) < 4))
-   {   if (length($User) < 4)
-       {  print "User     (at least 5 letters) : ";
-          $User = <STDIN>;
-          chomp($User);
+   if (! defined $trans)
+   {   $trans  = uc(sprintf("%x",rand(999999)));
+       $trans .= sprintf("%x",rand(999999));
+       $trans .= uc(sprintf("%x",rand(999999)));
+       $trans .= sprintf("%x",rand(999999));
+       $trans .= uc(sprintf("%x",rand(999999)));
+   }
+   if  (($nouser) && ($user eq ' '))
+   {   $user = uc(sprintf("%x",rand(999999)));
+       while (length($user) < 4)
+       {   $user .= uc(sprintf("%x",rand(999999)));
        }
-       if (length($Pass) < 4)
+   } 
+   if (($nopass) && ($pass eq ' '))
+   {   $pass = sprintf("%x",rand(999999));
+       while (length($pass) < 4)
+       {   $pass .= sprintf("%x",rand(999999));
+       }
+   } 
+   while ((length($user) < 4) || (length($pass) < 4))
+   {   if (length($user) < 4)
+       {  print "User     (at least 5 letters) : ";
+          $user = <STDIN>;
+          chomp($user);
+       }
+       if (length($pass) < 4)
        {  print "Password (at least 5 letters) : ";
-          $Pass = <STDIN>;
-          chomp($Pass);
+          $pass = <STDIN>;
+          chomp($pass);
        }
    } 
    my $rest = 0;
@@ -39,18 +63,18 @@ sub authorize
    my $matchKey = '';
    my $num2 = 17;
    my $rest2 = 0;
-   my $corr = ord(substr($Pass, 0, 1)) + ord(substr($User, 0, 1));
-   my $lr = length($random) - 1;
+   my $corr = ord(substr($pass, 0, 1)) + ord(substr($user, 0, 1));
+   my $lr = length($trans) - 1;
    my $k = $corr % $lr;
-   my $lu = length($User) - 1;
+   my $lu = length($user) - 1;
    my $j = $corr % $lu;
-   $corr = ($corr + ord(substr($random, $k, 1)) + $j + $k) % 37;
-   for (my $i = 0; $i < length($Pass); $i++)
-   {  my $num1 = ord(substr($Pass,$i,1)) + $corr;
+   $corr = ($corr + ord(substr($trans, $k, 1)) + $j + $k) % 37;
+   for (my $i = 0; $i < length($pass); $i++)
+   {  my $num1 = ord(substr($pass,$i,1)) + $corr;
       my $spar = $num1 % 53;
-      $num1 += ($i < length($User)) ? ord(substr($User, $i, 1)) : $i ;
-      my $num3 = ord(substr($random, $k, 1)) % 53;
-      $num1 += ($spar > $num3 ) ? $num3 : ord(substr($random, $k, 1));
+      $num1 += ($i < length($user)) ? ord(substr($user, $i, 1)) : $i ;
+      my $num3 = ord(substr($trans, $k, 1)) % 53;
+      $num1 += ($spar > $num3 ) ? $num3 : ord(substr($trans, $k, 1));
       $num2 += $num1 + $num3;
       $rest += $num1 % 77;
       $rest2 += $num2 % 109;
@@ -65,8 +89,8 @@ sub authorize
       $fullKey .= sprintf("%x", $num1);
       $matchKey .= sprintf("%x", $num2);
       $num2 = $num1 % 98;
-      $corr = ord(substr($Pass, $i, 1)) + ord(substr($User, $j, 1))
-               + ord(substr($random, $k, 1)) + $i + $j + $k;
+      $corr = ord(substr($pass, $i, 1)) + ord(substr($user, $j, 1))
+               + ord(substr($trans, $k, 1)) + $i + $j + $k;
       $j = $corr % $lu;
       $k = $corr % $lr;
       $corr = $corr % 37;
@@ -76,14 +100,20 @@ sub authorize
   $fullKey = uc($fullKey);
   $matchKey = uc($matchKey);
   my $l = sprintf("%d",(length($fullKey) / 2));
-  my $halfKey = substr($fullKey, 0, $l); 
+  my $halfKey = substr($fullKey, 0, $l);
+  my $jsUser = ($nouser) ? $user : ' ';
+  my $jsPass = ($nopass) ? $pass : ' ';
   my $str = <<"EOF";
 function authorize()
 { var chances = 0;
-  scramble = '$random';
+  var User = '$jsUser';
+  var Pass = '$jsPass';
+  scramble = '$trans';
   while (chances < 3)
-  { var User = app.response('',"Userid",'', true);
-    var Pass = app.response('',"Password",'', true);
+  { if (User.length < 4)
+       User = app.response('',"Userid",'', true);
+    if (Pass.length < 4)
+       Pass = app.response('','$title','', true);
     var rest = 0;
     fullKey = '';
     var matchKey = '';
@@ -126,13 +156,17 @@ function authorize()
    halfKey = fullKey.slice(0, l);
    matchKey += '' + util.printf("%x", rest2);
    if (matchKey == '$matchKey')
-     chances = 5;
+     chances = 7;
    else
    {  halfKey = '';
       fullKey = '';
    }     
    chances++;
-  }       
+   Pass = '$jsPass';
+   User = '$jsUser';
+  }
+  if (chances < 7)
+     app.alert('Authorization failed, encrypted data will not be shown');       
 } 
 function encrypt(word)
 { var key = fullKey;
@@ -196,16 +230,22 @@ function decrypt(word)
 }
 
 EOF
-    
-  return ($fullKey, $halfKey, $random, $str);
+  $self->{fullKey} = $fullKey;
+  $self->{halfKey} = $halfKey;
+  $self->{transaction} = $trans;
+  $self->{jsCode} = \$str; 
+  return $self;
 }
 
 ##############################################################
 # To scramble and translate a string to a hex-encoded string 
 ##############################################################
 sub encrypt
-{  my ($word, $key, $scramble) = @_;
-   return unless ($word) && ($key );
+{  my $self = shift;
+   my $word = shift;
+   my $key  = shift || $self->{halfKey};
+   my $scramble = $self->{transaction};
+   return unless ($word);
  
    my $j = rand(8) + 1;
    my $out = '%' . sprintf("%x", ord($j));
@@ -240,11 +280,14 @@ sub encrypt
 }
 
 sub decrypt
-{  my $out = '';
-   my ($word, $key, $scramble) = @_;
-   return unless ($word) && ($key );
+{  my $self = shift;
+   my $word = shift;
+   my $key  = $self->{key};
+   my $scramble = $self->{transaction};
+   my $out = '';
+   return unless ($word);
    if ($word =~ m/^(%[0-9A-F]{2})+\&?$/gso)
-   {  $word =~ s/%(..)/pack('c',hex($1))/eg;
+   {  $word =~ s/%(..)/pack('C',hex($1))/eg;
    } 
    my $j = substr($word, 0, 1);
    $word = substr($word, 1);
@@ -279,6 +322,51 @@ sub decrypt
    return $out;
 }
 
+sub getJsCode
+{  my $self = shift;
+   return ${$self->{jsCode}};
+}
+sub getHalfKey
+{  my $self = shift;
+   return $self->{halfKey};
+}
+sub getFullKey
+{  my $self = shift;
+   return $self->{fullKey};
+}
+sub getTransaction
+{  my $self = shift;
+   return $self->{transaction};
+}
+sub getKeys
+{  my $self = shift;
+   return ($self->{fullKey}, $self->{halfKey}, $self->{transaction});
+}
+sub initJsCode
+{  my $self = shift;
+   PDF::Reuse::prJs($self->getJsCode());
+   PDF::Reuse::prInit("authorize();");
+}
+
+sub fieldValue
+{  my $self = shift;
+   my $field = shift;
+   my $value = shift;
+   $value = $self->encrypt($value);
+   PDF::Reuse::prField($field, "js: decrypt('$value')");
+}
+
+sub decryptInit
+{  my $class = shift;
+   my $self  = {};
+   bless $self, $class;
+   my %param = @_;
+   for (keys %param)
+   {   my $key = lc($_);
+       $self->{$key} = $param{$_}; 
+   }
+   return $self;
+}
 
 1;
 
@@ -290,72 +378,169 @@ PDF::Reuse::Scramble - Scramble data transfer between Perl - Acrobat JavaScript
 
 =head1 SYNOPSIS
 
-my ($longKey, $shortKey, $random, $JavaScriptCode) = B<authorize>();
+A little test where everything is done in Perl. In a real case JavaScript
+should be involved.
 
-my $codedString = B<encrypt>('String to be scrambled', $shortKey, $random);
+   use PDF::Reuse::Scramble;
+   use strict;
 
-my $decodedString = B<decrypt>($codedString, $shortKey, $random);
+   #############################################################
+   # As there are no userid or password as parameters to new,
+   # the system will ask for those two strings. (Don't use 
+   # characters from an extended character set. Your operating
+   # system and Acrobat/Reader might have different opinion
+   # about character and numeric order)
+   #############################################################
+ 
+   my $s = PDF::Reuse::Scramble->new();
+
+   my ($longKey, $shortKey, $transaction) = $s->getKeys();
+
+   my $codedString = $s->encrypt('This text will be used');
+   print "$codedString\n";
+
+   ####################################################################
+   # encrypt uses the short key by default, so that one has to be used
+   # here for decryption. (If it had been encrypted by JavaScript, on
+   # the other hand, the long key would have been used)
+   ####################################################################
+   
+   my $d = PDF::Reuse::Scramble->decryptInit(key         => $shortKey,
+                                             transaction => $transaction);
+   my $text = $d->decrypt($codedString);
+   print "$text\n";
+
 
 =head1 ABSTRACT
 
-This module has subroutines in Perl and corresponding functions in Acrobat
-JavaScript to encrypt and decrypt data transferred between Perl and a PDF-
-document and back to Perl. There is also a subroutine/function in both languages
-to create the keys used for the scrambling.
+This module has subroutines in Perl and functions in Acrobat JavaScript to encrypt
+and decrypt data transferred between Perl and a PDF-document and back to Perl. There
+is also a subroutine/function in both languages to create the keys used for 
+the scrambling.
 
 =head1 DESCRIPTION
 
 This is an experimental module. It should work for Acrobat Reader 5.0.5 or higher.
+It makes it possible to use the Reader and also Acrobat in a restricted way,
+so you can decide who can read the data you send out, and when you get a response,
+you can know that the right person answered.
 
-The authorize function creates a short key, a long key, a random string and a string
-with JavaScript code. An internal match string is also created. The random string is
-used in every process.
+When you use this module to encrypt data for an interactive PDF-document,
+the process looks a little like this:
 
-Data is encrypted with the B<short key>.
+Data to be inserted in a PDF-document is encrypted with a B<short key> and
+a transaction code.
 
-The scrambled data together with generated JavaScript code is put in the new
-PDF-document.
+When the user opens the document for the first time, he has to be authorized. 
+He will be prompted for his userid and password, if this dialog hasn't been
+suppressed. Encryption keys and an internal match string are recreated.
+If the new and old match strings are equal, there is a good chance that the new
+keys also are correct, but there is no guarantee ! (The match strings are only
+present to help the user avoid small spelling mistakes. Big errors might not be
+detected.)
 
-When the user opens the document for the first time, he has to be authorized. Then 
-the keys and the internal match string are recreated. If the new and an old match 
-strings are equal, there is a good chance that the new keys also are correct, but
-there is no guarantee ! (The match strings are only present to help the user avoid
-small spelling mistakes. Big errors might not be detected.)
+When data is sent back to the server, a B<long key> together with a transaction
+code will be used both to encrypt and decrypt it.
 
-Data is decrypted with the B<short key>.
+=head1 Methods
 
-When data is sent back to the server, the B<long key> will be used both to encrypt
-and decrypt it.
+=head2 new
 
-=head1 FUNCTIONS
+    new( user        => $user,
+         password    => $passWord, 
+         seed        => $seed,
+         noUser      => $nouser,
+         noPassword  => $nopassword,
+         title       => $title,
+         transaction => $trans);
+   
+Creates a new instance of an encryption object.
 
-=head2 authorize - Create keys for encryption/decryption and JavaScript code 
+All the parameters are optional.
+If 'noUser' is set to something, Acrobat/Reader will NOT prompted for an userid when
+the generated PDF-document is opened, and the system will generate an internal userid,
+if it has not been given as the 'user' parameter. The same goes for 'noPassword'. 
+The user will not be prompted for it, and an internal one will be generated if it is
+not given by the 'password' parameter.
 
-($longKey, $shortKey, $randomString, $JavaScriptCode = 
-                              authorize([$userId, $passWord, $seed])
-
-returns a long key, a short key, a random string and a string with JavaScript code
-to be inserted in a PDF-document. It will be a JavaScript version of the functions
-described in this document: 'authorize', 'encrypt' and 'decrypt'
-
-The function will prompt for an userid and/or password, if they are not specified
-as parameters. Each of them have to be at least 5 characters long.
+Both userid and password have to be at least 5 characters long.
 
 Seed will be used for 'srand'. If it is not specified 'time' will be used.
 
-=head2 encrypt - Scramble/encrypt a string 
+Title is the title of the password dialog in the PDF-document.
 
-$encoded = encrypt($stringToEncode, $key, $randomString)
+Transaction is a key component in the scrambling.
+
+=head2 encrypt 
+
+    $encoded = $s->encrypt($stringToEncrypt [,$key])
 
 returns an hex-encoded string which has been encrypted/scrambled
 
-=head2 decrypt - Translate a scrambled string to normal text 
+$key is optional. Don't use this parameter when you send encrypted data to 
+a PDF-document. The JavaScripts use only the short key to decrypt and the long
+key to encrypt.
 
-$text = decrypt($encodedString, $key, $randomString)
+=head2 fieldValue
 
-returns a decrypted string.
+    $s->fieldValue($fieldName, $stringToEncrypt);
 
-=head1 EXAMPLE
+Encrypts a string. Makes the JavaScript function decrypt to be called when the
+PDF-document is opened, and makes the decrypted value to be assigned to the field
+with the name $fieldName.
+
+=head2 initJsCode
+      
+    $s->initJsCode();
+
+Inserts a string with JavaScript code in the PDF-document you are creating.
+It will be the JavaScript functions 'authorize', 'encrypt' and 'decrypt'.
+'authorize' will be initiated to run when the document is opened the first time.
+
+=head2 initDecrypt
+
+    $d->initDecrypt(key         => $key,
+                    transaction => $transactionCode);
+
+Creates a new decryption object.
+
+=head2 decrypt 
+
+    $text = $d->decrypt($encodedString)
+
+returns a decrypted string
+
+=head1 EXAMPLES
+
+=head2 A short example
+
+You have a PDF-document with the interactive fields: field_1, field_2 and field_3 
+(spelled exactly like that), which you want to fill with encrypted text. 
+If you write the control code "AX225", you will be able to read the encrypted texts.
+
+   use PDF::Reuse;
+   use PDF::Reuse::Scramble;
+   use strict;
+
+   prFile('hidden1.pdf');
+   prCompress(1);
+   my $s = PDF::Reuse::Scramble->new( nouser => 1,
+                                      password => 'AX225',
+                                      title    => 'Control Code');
+   $s->initJsCode();
+   $s->fieldValue('field_1', 'This is the first secret');
+   $s->fieldValue('field_2', 'This is the second secret');
+   $s->fieldValue('field_3', 'This is the third secret');
+   prDoc('old.pdf');
+   prEnd();
+
+=head2 A long example (more or less complete)
+
+This example looks a little bit big, because it shows how different programs
+interact. It is two Perl programs and also JavaScript embedded in a generated
+PDF-document. And I have also tried to make it a 'complete example'. Cut and
+paste, save it as files and try it. If you have a local web server, you could
+run the programs at the directory where your server looks for CGI-programs.
 
 First we need a JavaScript file which defines interactive fields and buttons
 and assigns values to them ('fab.js'):
@@ -495,62 +680,57 @@ and assigns values to them ('fab.js'):
                     cSubject: "This is the subject", cMsg: str} );
    }
 
-Here is a Perl program which creates a PDF-document
+Here is a Perl program which creates a PDF-document and uses 'fab.js'
 
      use PDF::Reuse;
-     
-     #########################################################
-     # You have to specify which subroutines to use, or :all
-     #########################################################
-     
-     use PDF::Reuse::Scramble qw(:all);
+     use PDF::Reuse::Scramble;
      use strict;
      
-     ##########################
-     # Data about the customer
-     ##########################
+     #####################################################
+     # Data about the customer, should be from a database
+     #####################################################
 
      my $customerNo   = 5;  
      my @customerData = ('Mr', 'Peter', 'Johansson', 'Kungsgatan 9', 'Olovstad',
                          'SE-10010', 'Sweden', '+46119-23456', '+4670-777777',
                          'pj@com', 'Tot. Invented Inc.');
 
-     ####################################
-     # The document should be compressed 
-     # to keep its' size down
-     ####################################
+     my $userId       = '12Peter';         # Case sensitive !
+     my $password     = 'Crazy Horse';     # Case sensitive !
+
+     ##################################################
+     # The document should be compressed so the keys 
+     # and parameters are not directly visible (but 
+     # it is not a big deal if they are seen)
+     #################################################
 
      prFile('hidden.pdf');
      prCompress(1);
 
      #############################################################
      # Keys are calculated and JavaScript code is "generated"
-     #
-     # As no userid or password are defined here, the subroutine
-     # will ask for those values. (Don't use characters from an
-     # extended character set. Your operating system and Acrobat/
-     # Reader might handle them differently)
      #############################################################
 
-     my ($fullKey, $halfKey, $random, $jsCode) = authorize();
+     my $s = PDF::Reuse::Scramble->new(user     => $userId,
+                                       password => $password);
 
      #######################################################################
      # The JavaScript functions "authorize", "crypt" and "decrypt" will be 
-     # added. "authorize" will run when the document is opened
+     # inserted. "authorize" will run when the document is opened
      #######################################################################
 
-     prJs($jsCode);
-     prInit("authorize();");
+     $s->initJsCode();
 
-     ######################################################
-     # Here the full decryption key is saved in a file
-     # instead of a database, just for this demonstration
-     ######################################################
+     ###############################################################
+     # Here the full decryption key and transaction code are saved 
+     # in a file instead of a database, just for this demonstration
+     ###############################################################
 
      my $secrets = 'run.txt';
+     my ($fullKey, $halfKey, $transaction) = $s->getKeys();
      open (OUTFILE, ">$secrets") || die $!;
      print OUTFILE "$fullKey\n";
-     print OUTFILE $random;
+     print OUTFILE "$transaction";
      close OUTFILE;
 
      ############################################
@@ -561,12 +741,12 @@ Here is a Perl program which creates a PDF-document
      prJs("function getCust() { return '$customerNo'; }");
 
      ########################################################
-     # Data for the fill-in form is prepared and "encrypted"
+     # Data for the fill-in form is assigned and "encrypted"
      ########################################################
 
      my $parameters = "0, 100, 800";
      for (@customerData)
-     {  $parameters .= ",'" . encrypt($_, $halfKey, $random) . "'";
+     {  $parameters .= ",'" . $s->encrypt($_) . "'";
      }
      ##########################################################
      # The JavaScript functions for the fill-in form is added 
@@ -577,14 +757,12 @@ Here is a Perl program which creates a PDF-document
      my $jsCode = "fab($parameters)";
      prInit($jsCode);
 
-     ##########################################################
-     # To show that you also can transfer encrypted data with 
-     # the help of prField, and how to get it decrypted (be 
-     # careful with all double and single quotes)
-     ##########################################################
+     ###########################################
+     # An interactive field in the PDF-document  
+     # will get an encrypted value 
+     ###########################################
 
-     my $sentence = encrypt('Something really secret', $halfKey, $random);
-     prField('Order_2', "js: decrypt('$sentence')");
+     $s->fieldValue('Order_2','Something really secret');
 
      prEnd();
 
@@ -592,7 +770,7 @@ And here at last is a little cgi-program 'update.pl' which receives encrypted
 data from the PDF-document, decrypts it, and sends the result back.
 
    use PDF::Reuse;
-   use PDF::Reuse::Scramble qw(decrypt);
+   use PDF::Reuse::Scramble;
    use strict;
 
    my $x = 25;
@@ -617,7 +795,7 @@ data from the PDF-document, decrypts it, and sends the result back.
    {  if ($pair =~ /(.*)=(.*)/)                     # found key=value;
       {   ($key,$value) = ($1,$2);                  # get key, value.
            $value =~ s/\+/ /g;
-           $value =~ s/%(..)/pack('c',hex($1))/eg;  # Not really necessary here
+           $value =~ s/%(..)/pack('C',hex($1))/eg;  # Not really necessary here
            $data{$key} = $value;                    # Create the hash.
       }
    }
@@ -629,9 +807,16 @@ data from the PDF-document, decrypts it, and sends the result back.
    my $infile = 'run.txt';
    open (INFILE, "$infile");
    my $fullKey = <INFILE>;
-   my $random  = <INFILE>;
+   my $transaction  = <INFILE>;
    close INFILE;
    chomp($fullKey);
+
+   #############################
+   # Create a decryption object
+   #############################
+
+   my $d = PDF::Reuse::Scramble->decryptInit(key         => $fullKey,
+                                             transaction => $transaction);
 
    #####################
    # Create new output
@@ -652,7 +837,7 @@ data from the PDF-document, decrypts it, and sends the result back.
    #####################################################################
 
    if ((exists $data{'r'}) && (exists $data{'re'}))
-   {  if ( $data{'r'} eq decrypt($data{'re'}, $fullKey, $random))
+   {  if ( $data{'r'} eq $d->decrypt($data{'re'}))
       {  prText($x, $y, "The messages are valid");
       }
       else
@@ -661,16 +846,16 @@ data from the PDF-document, decrypts it, and sends the result back.
       $y -= $step * 3;
    }
 
-   ###############################################
+   ##############################################
    # The transferred data is decrypted and shown
-   ###############################################
+   ##############################################
 
    for $key (keys %data)
    {  if (($key eq 'cust') || ($key eq 'r'))
       {  prText($x, $y, "$key : $data{$key}");
       }
       else
-      {  my $str = decrypt($data{$key}, $fullKey, $random);
+      {  my $str = $d->decrypt($data{$key});
          prText($x, $y, "$key : $str");
       }
       $y -= $step;
@@ -700,7 +885,7 @@ it under the same terms as Perl itself.
 
 =head1 DISCLAIMER
 
-As I have not worked earlier with cryptography, I am grateful for all suggestions
+I haven't worked very much with cryptography, so I am grateful for all suggestions
 regarding this module.
 
 You get this module free as it is, but nothing is guaranteed to work, whatever 

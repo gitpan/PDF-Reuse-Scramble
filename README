@@ -1,4 +1,4 @@
-PDF/Reuse/Scramble version 0.01
+PDF/Reuse/Scramble version 0.02
 ===============================
 
 This module has subroutines in Perl and corresponding functions in Acrobat
@@ -32,9 +32,7 @@ DEPENDENCIES
 
 This module requires these other modules:
 
-  Exporter
-
-To use this module, you will most probably need PDF::Reuse
+  PDF::Reuse
 
 COPYRIGHT AND LICENCE
 
